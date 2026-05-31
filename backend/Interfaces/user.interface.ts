@@ -1,4 +1,5 @@
 import { Types } from "mongoose";
+import { Request } from "express";
 
 export interface IUser {
     _id: Types.ObjectId;
@@ -8,5 +9,8 @@ export interface IUser {
 
     // Quota
     credits: number;
+}
 
+export interface IAuthRequest extends Request {
+    userId?: string;
 }

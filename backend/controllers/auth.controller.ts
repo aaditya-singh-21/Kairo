@@ -3,6 +3,7 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { UserModel } from "../models/user.model";
 import { Register, Login } from "../schemas/auth.schema";
+import { IAuthRequest } from "../Interfaces/user.interface";
 
 const JWT_SECRET = process.env.JWT_SECRET as string;
 const JWT_EXPIRES_IN = "7d";
@@ -85,7 +86,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     });
 };
 
-export const getMe = async (req: Request, res: Response): Promise<void> => {
+export const getMe = async (req: IAuthRequest, res: Response): Promise<void> => {
     const user = await UserModel.findById(req.userId).select("-password");
     if (!user) {
         res.status(404).json({ message: "User not found." });

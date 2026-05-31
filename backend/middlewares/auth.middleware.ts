@@ -1,9 +1,10 @@
-import { Request, Response, NextFunction } from "express";
+import { Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
+import { IAuthRequest } from "../Interfaces/user.interface";
 
 const JWT_SECRET = process.env.JWT_SECRET as string;
 
-export const protect = (req: Request, res: Response, next: NextFunction): void => {
+export const protect = (req: IAuthRequest, res: Response, next: NextFunction): void => {
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
