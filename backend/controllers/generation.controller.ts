@@ -27,7 +27,7 @@ export async function POST(req: IAuthRequest, res: Response) {
                 versionHistory: [],
             })
         }
-        
+
 
         const user = await UserModel.findById(req.userId)
 
@@ -47,7 +47,7 @@ export async function POST(req: IAuthRequest, res: Response) {
         res.setHeader('Connection', 'keep-alive')
         res.flushHeaders()
 
-        const code = generateCode(prompt, apiKey);
+        const code = generateCode(prompt, project.currentCode || undefined, apiKey);
         let fullCode = ""
 
         for await (const chunk of code) {

@@ -19,7 +19,7 @@ function isQuotaExceededError(error: unknown): boolean {
     return false;
 }
 
-async function* generateWithGroq(prompt: string) {
+async function* generateWithGroq(prompt: string, currentCode?: string) {
     const groqApiKey = process.env.GROQ_API_KEY;
     if (!groqApiKey) {
         throw new Error('GROQ_API_KEY is not set — cannot fall back to Groq.');
@@ -30,7 +30,12 @@ async function* generateWithGroq(prompt: string) {
         model: 'llama3-70b-8192',
         messages: [
             { role: 'system', content: SYSTEM_PROMPT },
-            { role: 'user', content: prompt },
+            {
+                role: 'user',
+                content: currentCode
+                    ? `Current code:\n${currentCode}\n\nUser request: ${prompt}`
+                    : prompt
+            },
         ],
         temperature: 0.2,
         stream: true,
@@ -42,7 +47,7 @@ async function* generateWithGroq(prompt: string) {
     }
 }
 
-export async function* generateCode(prompt: string, API?: string) {
+export async function* generateCode(prompt: string, currentCode?: string, API?: string) {
     const apiKey = API || process.env.GEMINI_API_KEY;
     if (!apiKey) {
         throw new Error("API key not provided!")
@@ -53,7 +58,9 @@ export async function* generateCode(prompt: string, API?: string) {
     try {
         const responceStream = await ai.models.generateContentStream({
             model: "gemini-2.5-flash",
-            contents: prompt,
+            contents: currentCode
+                ? `Current code:\n${currentCode}\n\nUser request: ${prompt}`
+                : prompt,
             config: {
                 systemInstruction: SYSTEM_PROMPT,
                 temperature: 0.2,
@@ -66,7 +73,7 @@ export async function* generateCode(prompt: string, API?: string) {
     } catch (error: unknown) {
         if (isQuotaExceededError(error)) {
             console.warn('[generation.service] Gemini quota exceeded — switching to Groq fallback.');
-            yield* generateWithGroq(prompt);
+            yield* generateWithGroq(prompt, currentCode);
         } else {
             throw error;
         }
