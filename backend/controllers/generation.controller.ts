@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import { Response } from "express";
 import { generateCode } from "../services/generation.service";
 import { IAuthRequest } from "../Interfaces/user.interface";
 import { UserModel } from "../models/user.model";
@@ -6,7 +6,6 @@ import { ProjectModel as Project } from "../models/project.model";
 export async function POST(req: IAuthRequest, res: Response) {
     try {
         const { prompt, projectId, apiKey } = req.body;
-        const project = await Project.findById(projectId);
         if (!prompt) {
             return res.status(400).json({
                 msg: "Prompt is required"
@@ -15,6 +14,20 @@ export async function POST(req: IAuthRequest, res: Response) {
         if (!req.userId) {
             return res.status(401).json({ error: "Unauthorized: User ID required" });
         }
+        let project;
+        if (projectId) {
+            project = await Project.findById(projectId);
+            if (!project) return res.status(404).json({ error: "Invalid project Id" })
+            if (project.owner.toString() !== req.userId) return res.status(403).json({ error: "Forbidden" })
+        } else {
+            project = await Project.create({
+                owner: req.userId,
+                name: prompt.slice(0, 50),
+                currentCode: "",
+                versionHistory: [],
+            })
+        }
+        
 
         const user = await UserModel.findById(req.userId)
 
@@ -22,13 +35,6 @@ export async function POST(req: IAuthRequest, res: Response) {
             return res.status(404).json({ error: "User not found" });
         }
 
-        if (!project) {
-            return res.status(404).json({ error: "Invalid project Id" })
-        }
-
-        if (project.owner.toString() !== req.userId) {
-            return res.status(403).json({ error: "Forbidden" })
-        }
 
         if (user.credits < 2) {
             return res.status(403).json({
@@ -52,8 +58,8 @@ export async function POST(req: IAuthRequest, res: Response) {
 
 
         // deducting the credits here
-        await UserModel.findByIdAndUpdate(req.userId, { $inc : {credits: - 2 }})
-        await Project.findByIdAndUpdate(projectId, {
+        await UserModel.findByIdAndUpdate(req.userId, { $inc: { credits: - 2 } })
+        await Project.findByIdAndUpdate(project._id, {
             currentCode: fullCode,
             $push: {
                 versionHistory: {
