@@ -7,9 +7,6 @@ export async function POST(req: IAuthRequest, res: Response) {
     try {
         const { prompt, projectId, apiKey } = req.body;
         const project = await Project.findById(projectId);
-        if(!project){
-            res.status(404).json({ error : "Invalid project Id"})
-        }
         if (!prompt) {
             return res.status(400).json({
                 msg: "Prompt is required"
@@ -23,6 +20,14 @@ export async function POST(req: IAuthRequest, res: Response) {
 
         if (!user) {
             return res.status(404).json({ error: "User not found" });
+        }
+
+        if (!project) {
+            return res.status(404).json({ error: "Invalid project Id" })
+        }
+
+        if (project.owner.toString() !== req.userId) {
+            return res.status(403).json({ error: "Forbidden" })
         }
 
         if (user.credits < 2) {
@@ -47,7 +52,17 @@ export async function POST(req: IAuthRequest, res: Response) {
 
 
         // deducting the credits here
-        UserModel.findByIdAndUpdate(req.userId, { credits: user.credits - 2 })
+        await UserModel.findByIdAndUpdate(req.userId, { $inc : {credits: - 2 }})
+        await Project.findByIdAndUpdate(projectId, {
+            currentCode: fullCode,
+            $push: {
+                versionHistory: {
+                    code: fullCode,
+                    prompt,
+                    versionNumber: project.versionHistory.length + 1,
+                }
+            }
+        })
         res.end()
     } catch (error) {
         res.write(`data: ${JSON.stringify({ error: "Generation failed" })}\n\n`)
