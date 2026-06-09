@@ -71,6 +71,7 @@ export async function POST(req: IAuthRequest, res: Response) {
         })
         res.end()
     } catch (error) {
+        console.error('[generation.controller] Error:', error)
         res.write(`data: ${JSON.stringify({ error: "Generation failed" })}\n\n`)
         res.end()
     }

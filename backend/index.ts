@@ -1,11 +1,14 @@
+import "dotenv/config";
 import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
 import mongoose from "mongoose";
+import path from "path";
 
 import authRoutes from "./routes/auth.routes";
+import projectRoutes from "./routes/project.routes";
+import generationRoutes from "./routes/generation.routes";
 
-dotenv.config();
 
 const app = express();
 
@@ -18,13 +21,15 @@ app.get("/", (_req, res) => {
 });
 
 app.use("/api/auth", authRoutes);
+app.use("/api", projectRoutes);
+app.use("/api", generationRoutes);
 
 // Database + Server 
-const MONGO_URI = process.env.MONGO_URI as string;
+const MONGO_URL = process.env.MONGO_URL as string;
 const PORT = process.env.PORT || 5000;
 
 mongoose
-    .connect(MONGO_URI)
+    .connect(MONGO_URL)
     .then(() => {
         console.log("MongoDB connected");
         app.listen(PORT, () => {
