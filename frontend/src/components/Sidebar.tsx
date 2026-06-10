@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Project } from '../types/dashboard';
-import { fetchWithAuth } from '../lib/api';
 
 interface SidebarProps {
   projects: Project[];
@@ -77,9 +76,8 @@ function ProjectItem({
     >
       <div
         onClick={onSelect}
-        className={`flex items-center gap-2.5 px-3 py-2.5 cursor-none transition-colors duration-150 ${
-          active ? 'bg-pitch text-paper' : 'hover:bg-pitch-5 text-pitch'
-        }`}
+        className={`flex items-center gap-2.5 px-3 py-2.5 cursor-none transition-colors duration-150 ${active ? 'bg-pitch text-paper' : 'hover:bg-pitch-5 text-pitch'
+          }`}
       >
         {/* Status dot */}
         <div className={`w-1 h-1 rounded-full flex-shrink-0 ${active ? 'bg-blueprint' : 'bg-pitch-40'}`} />
@@ -305,7 +303,7 @@ export default function Sidebar({
             {projectsLoading ? (
               // Loading skeleton
               <div className="px-3 pt-2 flex flex-col gap-1">
-                {[1,2,3,4].map((i) => (
+                {[1, 2, 3, 4].map((i) => (
                   <div key={i} className="flex items-center gap-2.5 px-0 py-2.5">
                     <div className="w-1 h-1 rounded-full bg-pitch-10 flex-shrink-0" />
                     <div className="flex-1">

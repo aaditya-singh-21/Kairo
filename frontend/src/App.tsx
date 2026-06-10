@@ -6,6 +6,7 @@ import LandingPage from './pages/LandingPage'
 import SignInPage from './pages/SignInPage'
 import SignUpPage from './pages/SignUpPage'
 import DashboardPage from './pages/DashboardPage'
+import EditorPage from './pages/EditorPage'
 
 
 function App() {
@@ -21,6 +22,14 @@ function App() {
             element={
               <ProtectedRoutes>
                 <DashboardPage />
+              </ProtectedRoutes>
+            }
+          />
+          <Route
+            path="/editor"
+            element={
+              <ProtectedRoutes>
+                <EditorPage />
               </ProtectedRoutes>
             }
           />

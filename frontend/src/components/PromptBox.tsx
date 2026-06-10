@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import type { SamplePrompt } from '../types/dashboard';
 import { SAMPLE_PROMPTS } from '../types/dashboard';
 
