@@ -52,7 +52,7 @@ export default function Navbar() {
           <a href="/signin" className="font-mono text-[11px] tracking-[0.1em] uppercase text-pitch-40 hover:text-pitch transition-colors">
             Sign In
           </a>
-          <a href="/dashboard" className="btn-swiss text-[11px] py-2.5 px-5">
+          <a href="/signup" className="btn-swiss text-[11px] py-2.5 px-5">
             <span>Get Access</span>
           </a>
         </div>

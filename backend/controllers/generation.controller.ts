@@ -46,7 +46,7 @@ export async function POST(req: IAuthRequest, res: Response) {
         res.setHeader('Cache-Control', 'no-cache')
         res.setHeader('Connection', 'keep-alive')
         res.flushHeaders()
-
+        res.write(`data: ${JSON.stringify({ projectId: project._id.toString() })}\n\n`)
         const code = generateCode(prompt, project.currentCode || undefined, apiKey);
         let fullCode = ""
 

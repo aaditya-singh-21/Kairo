@@ -40,7 +40,7 @@ export function AuthProvider({ children }: Props) {
                     throw new Error("Failed to refresh user")
                 }
                 const data = await response.json();
-                if (data.success) {
+                if (data.user) {
                     setUser(data.user);
                 } else {
                     setToken(null)
@@ -77,7 +77,7 @@ export function AuthProvider({ children }: Props) {
             }
 
             const data = await response.json();
-            if (data.success) {
+            if (data.user) {
                 setUser(data.user);
             }
 
