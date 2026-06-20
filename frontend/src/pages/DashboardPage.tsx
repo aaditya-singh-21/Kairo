@@ -5,10 +5,10 @@ import { useAuth } from '../context/AuthContext';
 import { fetchWithAuth } from '../lib/api';
 import CustomCursor from '../components/CustomCursor';
 import Sidebar from '../components/Sidebar';
+import SettingsModal from '../components/SettingsModal';
 import { PromptBox, SampleCards } from '../components/PromptBox';
 import type { Project } from '../types/dashboard';
 
-/* ── Empty / Welcome State ─────────────────────────── */
 function WelcomeState({ userName }: { userName: string }) {
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
@@ -36,7 +36,6 @@ function WelcomeState({ userName }: { userName: string }) {
   );
 }
 
-/* ── Active Project State ─────────────────────────── */
 function ActiveProjectHeader({ project }: { project: Project }) {
   return (
     <motion.div
@@ -69,9 +68,6 @@ function ActiveProjectHeader({ project }: { project: Project }) {
   );
 }
 
-/* ── StreamOutput removed — streaming now happens in EditorPage ── */
-
-/* ── Dashboard Page ────────────────────────────────── */
 export default function DashboardPage() {
   const { user, token, isLoading, logout } = useAuth();
   const navigate = useNavigate();
@@ -83,9 +79,9 @@ export default function DashboardPage() {
   const [projectsLoading, setProjectsLoading] = useState(true);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
 
-  // Fetch projects once auth context has resolved and token exists
   useEffect(() => {
     if (!isLoading && token) {
       loadProjects();
@@ -234,6 +230,13 @@ export default function DashboardPage() {
               )}
             </div>
             <div className="flex items-center gap-4">
+              <button
+                onClick={() => setIsSettingsOpen(true)}
+                className="font-mono text-[10px] text-pitch-60 hover:text-pitch transition-colors border border-pitch-20 px-2 py-1 rounded"
+              >
+                🔑 Add API Key
+              </button>
+              <div className="w-1 h-1 bg-pitch-40 rounded-full" />
               <span className="font-mono text-[10px] text-pitch-40">
                 {credits} credits
               </span>
@@ -322,6 +325,7 @@ export default function DashboardPage() {
             <span className="font-mono text-[9px] text-pitch-40">KAIRO ENGINE</span>
           </div>
         </main>
+        <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
       </div>
     </>
   );

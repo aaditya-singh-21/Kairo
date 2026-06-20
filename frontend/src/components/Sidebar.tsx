@@ -348,7 +348,7 @@ export default function Sidebar({
             </div>
             <button
               onClick={onSignOut}
-              className="w-full text-left font-mono text-[10px] text-pitch-40 hover:text-pitch transition-colors py-1 flex items-center gap-2"
+              className="w-full text-left font-mono text-[10px] text-pitch-40 hover:text-pitch transition-colors py-1 flex items-center gap-2 mt-1"
               style={{ cursor: 'none' }}
             >
               <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.2">

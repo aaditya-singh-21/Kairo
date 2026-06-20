@@ -59,9 +59,9 @@ export async function POST(req: IAuthRequest, res: Response) {
         }
 
 
-        if (user.credits < 2) {
+        if (!apiKey && user.credits < 2) {
             return res.status(403).json({
-                error: "Insufficient credits. Please upgrade your plan."
+                error: "Insufficient credits. Please upgrade your plan or provide your own API key."
             });
         }
 
@@ -92,10 +92,13 @@ export async function POST(req: IAuthRequest, res: Response) {
         const cleanCode = stripMarkdownFences(fullCode);
         res.write(`data: ${JSON.stringify({ done: true, code: cleanCode })}\n\n`);
 
-        // Always save and deduct credits when streaming completed normally.
+        // Always save and deduct credits when streaming completed normally (unless BYOK).
         // Do NOT gate this on isAborted — the client navigating away on the 'done' event
         // fires res.on('close') which sets isAborted=true, but the work is already done.
-        await UserModel.findByIdAndUpdate(req.userId, { $inc: { credits: -2 } });
+        if (!apiKey) {
+            await UserModel.findByIdAndUpdate(req.userId, { $inc: { credits: -2 } });
+        }
+
         await Project.findByIdAndUpdate(project._id, {
             currentCode: cleanCode,
             $push: {
@@ -106,7 +109,12 @@ export async function POST(req: IAuthRequest, res: Response) {
                 }
             }
         });
-        console.log(`[generation.controller] ✅ Generation complete — project ${project._id} saved, credits deducted`);
+
+        if (!apiKey) {
+            console.log(`[generation.controller] ✅ Generation complete — project ${project._id} saved, credits deducted`);
+        } else {
+            console.log(`[generation.controller] ✅ Generation complete — project ${project._id} saved, BYOK used (no credits deducted)`);
+        }
         res.end();
     } catch (error) {
         console.error('[generation.controller] Error:', error)

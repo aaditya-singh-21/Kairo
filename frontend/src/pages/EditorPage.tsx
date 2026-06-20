@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { fetchWithAuth } from '../lib/api';
 import CustomCursor from '../components/CustomCursor';
 import CodeEditor from '../components/CodeEditor';
+import SettingsModal from '../components/SettingsModal';
 import type { Project } from '../types/dashboard';
 
 /* ── Preview iframe ─────────────────────────────────── */
@@ -201,6 +202,7 @@ export default function EditorPage() {
   const [activeTab, setActiveTab] = useState<'code' | 'preview'>('code');
   const [error, setError] = useState<string | null>(null);
   const [projectLoading, setProjectLoading] = useState(true);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   // Track whether the component is still mounted so we don't call setState after unmount.
   const mountedRef = useRef(true);
@@ -246,10 +248,6 @@ export default function EditorPage() {
     loadProject();
   }, [loadProject, projectId]);
 
-  // ── Start streaming if we arrived with a prompt ──
-  // initialPrompt is only set when the user navigated from the dashboard
-  // with a new generation request. If they navigated directly to
-  // /editor/abc123, initialPrompt is empty and no streaming starts.
   useEffect(() => {
     if (!initialPrompt) return;
     // Guard: refs persist across React Strict Mode's mount→cleanup→remount cycle,
@@ -260,7 +258,7 @@ export default function EditorPage() {
     if (tokenRef.current) {
       startGeneration(initialPrompt);
     } else {
-      // Token not ready yet — wait up to 500ms then try once more.
+      // Token not ready yet 
       const timer = setTimeout(() => {
         if (tokenRef.current) startGeneration(initialPrompt);
         else setError('Authentication error. Please sign in again.');
@@ -268,11 +266,9 @@ export default function EditorPage() {
       return () => clearTimeout(timer);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Run once on mount.
+  }, []);
 
-  // ── The SSE stream reader ──
-  // This is the same pattern used everywhere in the app:
-  // POST → read SSE chunks → accumulate code → mark done.
+  // SSE stream reader
   async function startGeneration(promptText: string) {
     console.log('[EditorPage] startGeneration called with prompt:', promptText);
     setIsStreaming(true);
@@ -289,6 +285,7 @@ export default function EditorPage() {
         body: JSON.stringify({
           prompt: promptText,
           projectId: projectId === 'new' ? undefined : projectId,
+          apiKey: localStorage.getItem('kairo_gemini_key') || undefined,
         }),
       });
 
@@ -363,7 +360,7 @@ export default function EditorPage() {
     }
   }
 
-  // ── Iterate: send another prompt on the same project ──
+
   function handleIterate() {
     if (!iteratePrompt.trim() || isStreaming) return;
     startGeneration(iteratePrompt.trim());
@@ -373,7 +370,7 @@ export default function EditorPage() {
   const credits = user?.credits ?? 0;
   const versions = project?.versionHistory ?? [];
 
-  // ── Render ──
+
   return (
     <>
       <CustomCursor />
@@ -433,6 +430,14 @@ export default function EditorPage() {
                 <span className="font-mono text-[9px] text-blueprint">Generating...</span>
               </div>
             )}
+            <button
+              onClick={() => setIsSettingsOpen(true)}
+              className="font-mono text-[10px] text-pitch-60 hover:text-pitch transition-colors border border-pitch-20 px-2 py-1 rounded"
+              style={{ cursor: 'none' }}
+            >
+              🔑 Add API Key
+            </button>
+            <div className="w-1 h-1 bg-pitch-40 rounded-full" />
             <span className="font-mono text-[10px] text-pitch-40">{credits} credits</span>
             {versions.length > 0 && (
               <span className="font-mono text-[10px] text-pitch-40">
@@ -510,7 +515,6 @@ export default function EditorPage() {
           </div>
         </div>
 
-        {/* ── Bottom bar: iterate prompt ── */}
         <div className="flex items-center gap-3 px-6 py-3 border-t border-pitch-10 flex-shrink-0">
           {/* Version info */}
           <span className="font-mono text-[9px] text-pitch-40 flex-shrink-0">
@@ -532,7 +536,6 @@ export default function EditorPage() {
             />
           </div>
 
-          {/* Re-generate button */}
           <button
             onClick={handleIterate}
             disabled={isStreaming || !iteratePrompt.trim() || credits < 2}
@@ -549,6 +552,7 @@ export default function EditorPage() {
           </button>
         </div>
       </div>
+      <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
     </>
   );
 }
