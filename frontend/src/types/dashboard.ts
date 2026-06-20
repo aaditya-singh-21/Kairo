@@ -67,3 +67,10 @@ export const SAMPLE_PROMPTS: SamplePrompt[] = [
     prompt: 'Build a notes app with a two-panel layout: a sidebar showing all notes with search and tags, and a main panel with a clean text editor. Support markdown preview toggle, color-coded tags, pin important notes, and a trash/restore mechanism for deleted notes.',
   },
 ];
+// src/types/index.ts or src/types/dashboard.ts
+export interface ICodeVersion {
+  code: string
+  prompt: string
+  versionNumber: number
+  createdAt: string // Date becomes string when it comes through JSON
+}

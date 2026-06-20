@@ -69,7 +69,9 @@ export function AuthProvider({ children }: Props) {
 
     const refreshUser = async () => {
         try {
-            setIsLoading(true);
+            // Intentionally NOT setting isLoading here.
+            // isLoading gates ProtectedRoutes — setting it true would unmount
+            // protected pages (like EditorPage), destroying all in-progress state.
             const response = await fetchWithAuth("/auth/me")
 
             if (!response.ok) {
@@ -83,8 +85,6 @@ export function AuthProvider({ children }: Props) {
 
         } catch (error) {
             console.error("Failed to refresh user:", error);
-        } finally {
-            setIsLoading(false);
         }
     }
 

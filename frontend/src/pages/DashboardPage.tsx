@@ -73,15 +73,14 @@ function ActiveProjectHeader({ project }: { project: Project }) {
 
 /* ── Dashboard Page ────────────────────────────────── */
 export default function DashboardPage() {
-  const { user, token, isLoading, logout, refreshUser } = useAuth();
+  const { user, token, isLoading, logout } = useAuth();
   const navigate = useNavigate();
 
   const [projects, setProjects] = useState<Project[]>([]);
   const [activeProject, setActiveProject] = useState<Project | null>(null);
   const [prompt, setPrompt] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [loading] = useState(false);
   const [projectsLoading, setProjectsLoading] = useState(true);
-
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
@@ -129,9 +128,9 @@ export default function DashboardPage() {
   }
 
   function handleSelectProject(p: Project) {
-    setActiveProject(p);
-    setPrompt('');
-    setError(null);
+    navigate(`/editor/${p._id}`);
+    // No state.prompt passed — EditorPage will load the saved currentCode
+    // from the backend without starting a new generation stream.
   }
 
   async function handleDeleteProject(id: string) {
@@ -167,36 +166,7 @@ export default function DashboardPage() {
 
   async function handleGenerate() {
     if (!prompt.trim() || loading || (user?.credits ?? 0) < 2) return;
-    setLoading(true);
-    setError(null);
-
-    try {
-      const res = await fetch('http://localhost:5000/api/generate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          prompt: prompt.trim(),
-          projectId: activeProject?._id ?? undefined,
-        }),
-      });
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setError(data.error || data.msg || 'Generation failed. Please try again.');
-        return;
-      }
-
-      // TODO: navigate to /editor/:projectId — streaming will happen there
-      // navigate(`/editor/${projectId}`);
-
-    } catch {
-      setError('Network error. Check your connection.');
-    } finally {
-      setLoading(false);
-    }
+    navigate('/editor/new', { state: { prompt: prompt.trim() } });
   }
 
   const credits = user?.credits ?? 0;
