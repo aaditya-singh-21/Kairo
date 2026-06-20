@@ -20,7 +20,10 @@ export async function POST(req: IAuthRequest, res: Response) {
     // Do NOT use req.on('close'): express.json() destroys the IncomingMessage stream after
     // reading the request body, which fires 'close' on req for every normal request.
     res.on('close', () => {
-        console.log('[generation.controller] res "close" — client disconnected mid-stream');
+        // This is expected on normal completion — the frontend navigates away when it
+        // receives the 'done' event, which closes the SSE connection.
+        // DB saves and credit deduction are NOT gated on this flag, so nothing is lost.
+        console.log('[generation.controller] SSE connection closed (expected if client received done event)');
         isAborted = true;
     });
 
@@ -86,16 +89,13 @@ export async function POST(req: IAuthRequest, res: Response) {
             res.write(`data: ${JSON.stringify({ chunk })}\n\n`)
         }
 
-        if (isAborted) {
-            console.log('[generation.controller] Client aborted request. Skipping credit deduction and save.');
-            return;
-        }
         const cleanCode = stripMarkdownFences(fullCode);
-        res.write(`data: ${JSON.stringify({ done: true, code: cleanCode })}\n\n`)
+        res.write(`data: ${JSON.stringify({ done: true, code: cleanCode })}\n\n`);
 
-
-        // deducting the credits here
-        await UserModel.findByIdAndUpdate(req.userId, { $inc: { credits: - 2 } })
+        // Always save and deduct credits when streaming completed normally.
+        // Do NOT gate this on isAborted — the client navigating away on the 'done' event
+        // fires res.on('close') which sets isAborted=true, but the work is already done.
+        await UserModel.findByIdAndUpdate(req.userId, { $inc: { credits: -2 } });
         await Project.findByIdAndUpdate(project._id, {
             currentCode: cleanCode,
             $push: {
@@ -105,8 +105,9 @@ export async function POST(req: IAuthRequest, res: Response) {
                     versionNumber: project.versionHistory.length + 1,
                 }
             }
-        })
-        res.end()
+        });
+        console.log(`[generation.controller] ✅ Generation complete — project ${project._id} saved, credits deducted`);
+        res.end();
     } catch (error) {
         console.error('[generation.controller] Error:', error)
         res.write(`data: ${JSON.stringify({ error: "Generation failed" })}\n\n`)

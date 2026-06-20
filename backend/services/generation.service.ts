@@ -48,6 +48,7 @@ async function* generateWithGroq(prompt: string, currentCode?: string) {
             },
         ],
         temperature: 0.2,
+        max_tokens: 8192,
         stream: true,
     });
 

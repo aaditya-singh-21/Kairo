@@ -14,90 +14,101 @@ import type { Project } from '../types/dashboard';
 //   2. Strip `export default` — we render App ourselves at the bottom
 //   3. Wrap in HTML that loads React 18 + ReactDOM + Babel standalone + Tailwind via CDN
 //   4. Babel transpiles JSX→JS at runtime inside the iframe (no build step needed)
-function buildIframeHtml(tsxCode: string): string {
+function buildIframeHtml(tsxCode: string, isStreaming: boolean = false): string {
   const stripped = tsxCode
-    // Remove markdown fences (global — catches multiple fence blocks)
     .replace(/^```[\w]*\n?/gm, '')
     .replace(/^```\s*$/gm, '')
-    // ── Import removal ──────────────────────────────────────────────────────
-    // Pass 1: multi-line imports  e.g. import React, {\n  useState\n} from 'react';
-    // [\s\S]*? crosses newlines (unlike . which stops at \n even with /m flag)
-    // Non-greedy so it stops at the FIRST from '...' it hits, not the last.
-    .replace(/import\s+[\s\S]*?from\s+['"][^'"]*['"]\s*;?/g, '')
-    // Pass 2: any single-line import survivors (side-effect imports, type imports)
-    //         e.g. import 'some-css'; or import type { Foo } from 'bar';
-    .replace(/^import\s[^\n]*/gm, '')
-    // ── Export removal ──────────────────────────────────────────────────────
-    .replace(/export\s+default\s+App;?\s*$/, '')
-    .replace(/export\s+default\s+(function|class)\s+App/, '$1 App')
     .trim();
 
-  console.log('=== STRIPPED CODE ===');
-  console.log(stripped);
-  console.log('=== END STRIPPED ===');
-  // does stripped contain the word "import"?
-  console.log('Contains import?', stripped.includes('import'));
-  console.log('Contains export?', stripped.includes('export'));
+  // URL encode it so it contains no quotes, newlines, or <script> tags.
+  const encodedCode = encodeURIComponent(stripped);
 
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <!-- Tailwind CDN -->
   <script src="https://cdn.tailwindcss.com"><\/script>
-  <!-- React 18 + ReactDOM (UMD builds — exposed as global React / ReactDOM) -->
   <script src="https://unpkg.com/react@18/umd/react.development.js"><\/script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"><\/script>
-  <!-- Babel standalone — transpiles JSX + TypeScript in the browser at runtime -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"><\/script>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; }
-    body { margin: 0; padding: 0; min-height: 100vh; }
-  </style>
+  <style>*, *::before, *::after { box-sizing: border-box; } body { margin: 0; padding: 0; min-height: 100vh; }</style>
 </head>
 <body>
   <div id="root"></div>
-  <script type="text/babel" data-presets="react">
-    // Destructure hooks from global React so the generated code can use them
-    // without import statements (e.g. const [x, setX] = useState(...))
-    const {
-      useState, useEffect, useCallback, useMemo, useRef,
-      useReducer, useContext, createContext, memo, forwardRef,
-    } = React;
-
-    // ── Generated code starts here ──
-${stripped}
-    // ── Generated code ends here ──
-  </script>
 
   <script>
-    // Mount runs in a SEPARATE plain script tag (not type="text/babel").
-    // Babel processes all text/babel blocks synchronously before any plain
-    // scripts run, so App is guaranteed to be defined by the time this fires.
-    // The extra setTimeout(fn, 0) defers to the next event loop tick as a
-    // safety net — if the generated code ends with an unclosed expression
-    // that Babel still manages to parse, this ensures the App symbol is
-    // fully initialized in the global scope before createRoot is called.
-    setTimeout(function () {
-      try {
-        var rootEl = document.getElementById('root');
-        var root = ReactDOM.createRoot(rootEl);
-        root.render(React.createElement(App, null));
-      } catch (e) {
-        // Surface Babel/React render errors visibly inside the preview
-        // instead of silently failing with a blank white frame.
-        document.body.innerHTML =
-          '<div style="font-family:monospace;padding:24px;color:#c00;background:#fff1f0;border:1px solid #ffa39e;margin:16px;border-radius:4px">' +
+    window.addEventListener('load', function () {
+      var showError = function (msg) {
+        document.getElementById('root').innerHTML =
+          '<div style="font-family:monospace;padding:24px;color:#c00;background:#fff1f0;' +
+          'border:1px solid #ffa39e;margin:16px;border-radius:6px">' +
           '<b>Preview error</b><br><pre style="white-space:pre-wrap;margin-top:8px">' +
-          String(e).replace(/</g, '&lt;') + '</pre></div>';
+          String(msg).replace(/</g,'&lt;') + '</pre></div>';
+      };
+
+      var src;
+      try {
+        src = decodeURIComponent("${encodedCode}");
+      } catch(e) {
+        showError('Failed to decode generated code.');
+        return;
       }
-    }, 0);
-  </script>
+
+      var compiled;
+      try {
+        // Force the App component onto the window object in case the AI didn't export it
+        var safeSrc = src + '\\n;if (typeof App !== "undefined") window.App = App;\\n';
+        compiled = Babel.transform(safeSrc, {
+          // Use env preset so it automatically transpiles all import/export statements
+          // Use classic runtime so it outputs React.createElement instead of jsx-runtime
+          presets: [['react', { runtime: 'classic' }], ['env', { modules: 'commonjs' }]],
+          filename: 'app.jsx'
+        }).code;
+      } catch (e) {
+        if (${isStreaming ? "true" : "false"}) {
+          document.getElementById('root').innerHTML =
+            '<div style="font-family:monospace;padding:24px;color:#666;background:#f5f5f5;' +
+            'border:1px solid #ddd;margin:16px;border-radius:6px;display:flex;align-items:center;justify-content:center;height:calc(100vh - 32px)">' +
+            '<div class="animate-pulse"><b>Generating preview...</b></div></div>';
+        } else {
+          showError('Babel compilation error:\\n' + e.message);
+        }
+        return;
+      }
+
+      try {
+        // Provide the CommonJS environment for the compiled code to run in
+        window.exports = {};
+        window.module = { exports: window.exports };
+        window.require = function(mod) {
+          if (mod === 'react') return window.React;
+          if (mod === 'react-dom' || mod === 'react-dom/client') return window.ReactDOM;
+          // Gracefully mock any other missing modules so preview doesn't crash
+          return {};
+        };
+
+        // Run the compiled code
+        (0, eval)(compiled);
+
+        // Babel might have exported App via CommonJS, or it might be a global
+        var AppComp = window.exports.default || window.exports.App || window.App;
+
+        if (typeof AppComp === 'undefined') {
+          showError('No component named App was found in the generated code.\\nMake sure the AI names the root component App.');
+          return;
+        }
+
+        ReactDOM.createRoot(document.getElementById('root'))
+          .render(React.createElement(AppComp, null));
+      } catch (e) {
+        showError('Runtime error during component evaluation:\\n' + e.message);
+      }
+    });
+  <\/script>
 </body>
 </html>`;
 }
-
 function PreviewPane({ code, isStreaming }: { code: string; isStreaming: boolean }) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -112,8 +123,6 @@ function PreviewPane({ code, isStreaming }: { code: string; isStreaming: boolean
   // After streaming ends: update immediately with the final code.
   useEffect(() => {
     if (!iframeRef.current) return;
-    console.log('=== RAW CODE GOING INTO IFRAME ===');
-    console.log(code);
     if (!code) {
       iframeRef.current.srcdoc = '';
       return;
@@ -126,12 +135,12 @@ function PreviewPane({ code, isStreaming }: { code: string; isStreaming: boolean
       // During streaming — wait 500ms of silence before updating
       timerRef.current = setTimeout(() => {
         if (iframeRef.current) {
-          iframeRef.current.srcdoc = buildIframeHtml(code);
+          iframeRef.current.srcdoc = buildIframeHtml(code, true);
         }
       }, 500);
     } else {
       // Streaming done — update immediately with final code
-      iframeRef.current.srcdoc = buildIframeHtml(code);
+      iframeRef.current.srcdoc = buildIframeHtml(code, false);
     }
 
     return () => {
